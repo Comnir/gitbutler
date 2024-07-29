@@ -48,6 +48,7 @@ anyhow = "1.0.86"
 fslock = "0.2.1"
 parking_lot = "0.12.3"
 futures = "0.3.30"
+toml = "0.8.13"
 
 gitbutler-id = { path = "crates/gitbutler-id" }
 gitbutler-git = { path = "crates/gitbutler-git" }

@@ -2196,8 +2196,12 @@ dependencies = [
  "anyhow",
  "git2",
  "gitbutler-command-context",
+ "gitbutler-fs",
+ "gitbutler-serde",
  "gitbutler-testsupport",
  "serde",
+ "toml 0.8.14",
+ "tracing",
 ]
 
 [[package]]
