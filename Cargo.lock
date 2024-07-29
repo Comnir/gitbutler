@@ -2196,6 +2196,7 @@ dependencies = [
  "anyhow",
  "git2",
  "gitbutler-command-context",
+ "gitbutler-testsupport",
  "serde",
 ]
 

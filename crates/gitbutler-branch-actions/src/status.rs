@@ -6,7 +6,7 @@ use gitbutler_branch::{
 };
 use gitbutler_command_context::CommandContext;
 use gitbutler_diff::{diff_files_into_hunks, GitHunk, Hunk, HunkHash};
-use gitbutler_operating_modes::assure_open_workspace_mode;
+use gitbutler_operating_modes::assure_outside_workspace_mode;
 use gitbutler_project::access::WorktreeWritePermission;
 use gitbutler_repo::RepositoryExt;
 
@@ -33,7 +33,7 @@ pub fn get_applied_status(
     ctx: &CommandContext,
     perm: Option<&mut WorktreeWritePermission>,
 ) -> Result<VirtualBranchesStatus> {
-    assure_open_workspace_mode(ctx)
+    assure_outside_workspace_mode(ctx)
         .context("Getting applied status requires open workspace mode")?;
     let integration_commit = get_workspace_head(ctx)?;
     let mut virtual_branches = ctx
