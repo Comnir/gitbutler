@@ -4,28 +4,21 @@ use anyhow::{bail, Context, Result};
 use gitbutler_command_context::CommandContext;
 use serde::{Deserialize, Serialize};
 
-/// Operating Modes:
-/// Gitbutler currently has two main operating modes:
-/// - `in workspace mode`: When the app is on the gitbutler/integration branch.
-///     This is when normal operations can be performed.
-/// - `outside workspace mode`: When the user has left the gitbutler/integration
-///     branch to perform regular git commands.
-
-const INTEGRATION_BRANCH_REF: &str = "refs/heads/gitbutler/integration";
-const EDIT_BRANCH_REF: &str = "refs/heads/gitbutler/edit";
+pub const INTEGRATION_BRANCH_REF: &str = "refs/heads/gitbutler/integration";
+pub const EDIT_BRANCH_REF: &str = "refs/heads/gitbutler/edit";
 
 fn edit_mode_metadata_path(ctx: &CommandContext) -> PathBuf {
     ctx.project().gb_dir().join("edit_mode_metadata.toml")
 }
 
-fn read_edit_mode_metadata(ctx: &CommandContext) -> Result<EditModeMetadata> {
+pub fn read_edit_mode_metadata(ctx: &CommandContext) -> Result<EditModeMetadata> {
     let edit_mode_metadata = fs::read_to_string(edit_mode_metadata_path(ctx).as_path())
         .context("Failed to read edit mode metadata")?;
 
     toml::from_str(&edit_mode_metadata).context("Failed to parse edit mode metadata")
 }
 
-fn write_edit_mode_metadata(
+pub fn write_edit_mode_metadata(
     ctx: &CommandContext,
     edit_mode_metadata: &EditModeMetadata,
 ) -> Result<()> {
@@ -43,8 +36,8 @@ fn write_edit_mode_metadata(
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct EditModeMetadata {
     #[serde(with = "gitbutler_serde::serde::oid")]
-    target_commit_sha: git2::Oid,
-    source_branch: String,
+    pub editee_commit_sha: git2::Oid,
+    pub editee_branch: String,
 }
 
 #[derive(PartialEq)]

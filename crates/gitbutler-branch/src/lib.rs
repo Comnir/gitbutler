@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 mod branch;
 pub use branch::{Branch, BranchCreateRequest, BranchId, BranchUpdateRequest};
 mod branch_ext;
@@ -24,3 +26,10 @@ lazy_static! {
 
 pub const GITBUTLER_INTEGRATION_COMMIT_AUTHOR_NAME: &str = "GitButler";
 pub const GITBUTLER_INTEGRATION_COMMIT_AUTHOR_EMAIL: &str = "gitbutler@gitbutler.com";
+
+pub fn get_integration_commiter<'a>() -> Result<git2::Signature<'a>> {
+    Ok(git2::Signature::now(
+        GITBUTLER_INTEGRATION_COMMIT_AUTHOR_NAME,
+        GITBUTLER_INTEGRATION_COMMIT_AUTHOR_EMAIL,
+    )?)
+}

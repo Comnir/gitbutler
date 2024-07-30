@@ -15,5 +15,6 @@ gitbutler-command-context.workspace = true
 gitbutler-serde.workspace = true
 gitbutler-fs.workspace = true
 
+
 [dev-dependencies]
 gitbutler-testsupport.workspace = true
