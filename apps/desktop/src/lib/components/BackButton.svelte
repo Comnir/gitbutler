@@ -8,7 +8,7 @@
 	export let beforeOnMouseDown: () => Promise<void> = defaultBeforeOnMouseDown;
 </script>
 
--<Button
+<Button
 	style="ghost"
 	outline
 	on:mousedown={() => {
