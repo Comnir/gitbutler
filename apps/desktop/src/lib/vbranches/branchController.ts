@@ -1,11 +1,12 @@
 import { invoke } from '$lib/backend/ipc';
-import { showError, showToast } from '$lib/notifications/toasts';
+import { dismissToast, showInfo, showError, showToast } from '$lib/notifications/toasts';
 import * as toasts from '$lib/utils/toasts';
 import posthog from 'posthog-js';
 import type { BaseBranchService } from '$lib/baseBranch/baseBranchService';
 import type { RemoteBranchService } from '$lib/stores/remoteBranches';
 import type { VirtualBranch, Hunk, LocalFile } from './types';
 import type { VirtualBranchService } from './virtualBranch';
+import { bidiIsolates } from '@codemirror/language';
 
 export class BranchController {
 	constructor(
@@ -14,6 +15,16 @@ export class BranchController {
 		readonly remoteBranchService: RemoteBranchService,
 		readonly baseBranchService: BaseBranchService
 	) {}
+
+	async wrapWithToasts(action: () => any, actionName: string): Promise<any> {
+		const startedId = showInfo(`Working...`, `${actionName} in-progress`);
+		try {
+			await action();
+			return toasts.success(`${actionName} finished successfully`);
+		} finally {
+			dismissToast(startedId);
+		}
+	}
 
 	async setTarget(branch: string, pushRemote: string | undefined = undefined) {
 		try {
@@ -41,11 +52,13 @@ export class BranchController {
 	}
 
 	async createBranch(branch: { name?: string; ownership?: string; order?: number }) {
-		try {
-			await invoke<void>('create_virtual_branch', { projectId: this.projectId, branch });
-		} catch (err) {
-			showError('Failed to create branch', err);
-		}
+		this.wrapWithToasts(async () => {
+			try {
+				await invoke<void>('create_virtual_branch', { projectId: this.projectId, branch });
+			} catch (err) {
+				showError('Failed to create branch', err);
+			}
+		}, 'Branch creation');
 	}
 
 	async commitBranch(
@@ -54,24 +67,26 @@ export class BranchController {
 		ownership: string | undefined = undefined,
 		runHooks = false
 	) {
-		try {
-			await invoke<void>('commit_virtual_branch', {
-				projectId: this.projectId,
-				branch,
-				message,
-				ownership,
-				runHooks: runHooks
-			});
-			posthog.capture('Commit Successful');
-		} catch (err: any) {
-			if (err.code === 'errors.commit.signing_failed') {
-				showSignError(err);
-			} else {
-				showError('Failed to commit changes', err);
+		this.wrapWithToasts(async () => {
+			try {
+				await invoke<void>('commit_virtual_branch', {
+					projectId: this.projectId,
+					branch,
+					message,
+					ownership,
+					runHooks: runHooks
+				});
+				posthog.capture('Commit Successful');
+			} catch (err: any) {
+				if (err.code === 'errors.commit.signing_failed') {
+					showSignError(err);
+				} else {
+					showError('Failed to commit changes', err);
+				}
+				posthog.capture('Commit Failed', err);
+				throw err;
 			}
-			posthog.capture('Commit Failed', err);
-			throw err;
-		}
+		}, 'Commit');
 	}
 
 	async mergeUpstream(branch: string) {
@@ -130,14 +145,16 @@ export class BranchController {
 	}
 
 	async setSelectedForChanges(branchId: string) {
-		try {
-			await invoke<void>('update_virtual_branch', {
-				projectId: this.projectId,
-				branch: { id: branchId, selected_for_changes: true }
-			});
-		} catch (err) {
-			showError('Failed make default target', err);
-		}
+		this.wrapWithToasts(async () => {
+			try {
+				await invoke<void>('update_virtual_branch', {
+					projectId: this.projectId,
+					branch: { id: branchId, selected_for_changes: true }
+				});
+			} catch (err) {
+				showError('Failed make default target', err);
+			}
+		}, 'Setting default branch');
 	}
 
 	async updateBranchOrder(branches: { id: string; order: number }[]) {
@@ -203,44 +220,55 @@ export class BranchController {
 		}
 	}
 
+	// async pushBranch(branchId: string, withForce: boolean): Promise<void> {
+
+	// async pushBranch(branchId: string, withForce: boolean) {
+	// const result: Promise<void> = this.wrapWithToasts(async () => this.pushBranchNoToasts(branchId, withForce),
+	// console.log(branchId, withForce);
+	// 		return this.wrapWithToasts(async () => this.updateBranchOwnership('', ""),
+	// 		'Push to branch');
+	// 	}
+
 	async pushBranch(branchId: string, withForce: boolean): Promise<void> {
-		try {
-			await invoke<void>('push_virtual_branch', {
-				projectId: this.projectId,
-				branchId,
-				withForce
-			});
-			posthog.capture('Push Successful');
-			await this.vbranchService.refresh();
-		} catch (err: any) {
-			posthog.capture('Push Failed', { error: err });
-			if (err.code === 'errors.git.authentication') {
-				showToast({
-					title: 'Git push failed',
-					message: `
+		this.wrapWithToasts(async () => {
+			try {
+				await invoke<void>('push_virtual_branch', {
+					projectId: this.projectId,
+					branchId,
+					withForce
+				});
+				posthog.capture('Push Successful');
+				await this.vbranchService.refresh();
+			} catch (err: any) {
+				posthog.capture('Push Failed', { error: err });
+				if (err.code === 'errors.git.authentication') {
+					showToast({
+						title: 'Git push failed',
+						message: `
                         Your branch cannot be pushed due to an authentication failure.
 
                         Please check our [documentation](https://docs.gitbutler.com/troubleshooting/fetch-push)
                         on fetching and pushing for ways to resolve the problem.
                     `,
-					error: err.message,
-					style: 'error'
-				});
-			} else {
-				showToast({
-					title: 'Git push failed',
-					message: `
+						error: err.message,
+						style: 'error'
+					});
+				} else {
+					showToast({
+						title: 'Git push failed',
+						message: `
                         Your branch cannot be pushed due to an unforeseen problem.
 
                         Please check our [documentation](https://docs.gitbutler.com/troubleshooting/fetch-push)
                         on fetching and pushing for ways to resolve the problem.
                     `,
-					error: err.message,
-					style: 'error'
-				});
+						error: err.message,
+						style: 'error'
+					});
+				}
+				throw err;
 			}
-			throw err;
-		}
+		}, 'Commit');
 	}
 
 	async deleteBranch(branchId: string) {
@@ -279,18 +307,20 @@ You can find them in the 'Branches' sidebar in order to resolve conflicts.`;
 	 * @param remote Optionally sets another branch as the upstream.
 	 */
 	async createvBranchFromBranch(branch: string, remote: string | undefined = undefined) {
-		try {
-			await invoke<string>('create_virtual_branch_from_branch', {
-				projectId: this.projectId,
-				branch,
-				remote
-			});
-		} catch (err) {
-			showError('Failed to create virtual branch', err);
-		} finally {
-			this.remoteBranchService.refresh();
-			this.baseBranchService.refresh();
-		}
+		this.wrapWithToasts(async () => {
+			try {
+				await invoke<string>('create_virtual_branch_from_branch', {
+					projectId: this.projectId,
+					branch,
+					remote
+				});
+			} catch (err) {
+				showError('Failed to create virtual branch', err);
+			} finally {
+				this.remoteBranchService.refresh();
+				this.baseBranchService.refresh();
+			}
+		}, 'Virtual branch creation from branch');
 	}
 
 	/**
