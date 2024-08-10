@@ -77,7 +77,6 @@
 		dispatch('branchSelected', [selectedBranch.name, selectedRemote.name]);
 	}
 
-
 	const projectService = getContext(ProjectService);
 	async function deleteProject() {
 		try {
@@ -85,7 +84,7 @@
 			await projectService.reload();
 		} catch (err: any) {
 			console.error(err);
-		} 
+		}
 	}
 </script>
 
@@ -259,9 +258,7 @@
 		</SetupFeature>
 	</div>
 	<div class="action-buttons">
-		<BackButton
-		beforeOnMouseDown={deleteProject}
-		>Cancel</BackButton>
+		<BackButton beforeOnMouseDown={deleteProject}>Cancel</BackButton>
 		<Button
 			style="pop"
 			kind="solid"
