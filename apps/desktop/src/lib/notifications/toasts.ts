@@ -15,10 +15,13 @@ let idCounter = 0;
 
 export function showToast(toast: Toast) {
 	toast.message = toast.message?.replace(/^ */gm, '');
+	const newId = (idCounter++).toString();
 	toastStore.update((items) => [
 		...items.filter((t) => toast.id === undefined || t.id !== toast.id),
-		{ id: (idCounter++).toString(), ...toast }
+		{ id: newId, ...toast }
 	]);
+
+	return newId;
 }
 
 export function showError(title: string, error: unknown) {
@@ -38,7 +41,7 @@ export function showError(title: string, error: unknown) {
 }
 
 export function showInfo(title: string, message: string) {
-	showToast({ title, message, style: 'neutral' });
+	return showToast({ title, message, style: 'neutral' });
 }
 
 export function dismissToast(messageId: string | undefined) {

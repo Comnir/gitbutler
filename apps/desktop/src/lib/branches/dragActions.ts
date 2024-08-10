@@ -1,4 +1,6 @@
 import { DraggableCommit, DraggableHunk, DraggableFile } from '$lib/dragging/draggables';
+import { dismissToast, showError, showInfo } from '$lib/notifications/toasts';
+import * as toasts from '$lib/utils/toasts';
 import { filesToOwnership } from '$lib/vbranches/ownership';
 import { LocalFile, type VirtualBranch } from '$lib/vbranches/types';
 import type { BranchController } from '$lib/vbranches/branchController';
@@ -32,18 +34,34 @@ class BranchDragActions {
 	}
 
 	onBranchDrop(data: DraggableHunk | DraggableFile) {
+		let actionName;
 		if (data instanceof DraggableHunk) {
-			const newOwnership = `${data.hunk.filePath}:${data.hunk.id}`;
-			this.branchController.updateBranchOwnership(
-				this.branch.id,
-				(newOwnership + '\n' + this.branch.ownership).trim()
-			);
+			actionName = 'hunk';
 		} else if (data instanceof DraggableFile) {
-			const newOwnership = filesToOwnership(data.files);
-			this.branchController.updateBranchOwnership(
-				this.branch.id,
-				(newOwnership + '\n' + this.branch.ownership).trim()
-			);
+			actionName = 'file';
+		}
+		const startedId = showInfo(`Working...`, `Move ${actionName} in-progress`);
+
+		try {
+			if (data instanceof DraggableHunk) {
+				const newOwnership = `${data.hunk.filePath}:${data.hunk.id}`;
+				this.branchController.updateBranchOwnership(
+					this.branch.id,
+					(newOwnership + '\n' + this.branch.ownership).trim()
+				);
+			} else if (data instanceof DraggableFile) {
+				const newOwnership = filesToOwnership(data.files);
+				this.branchController.updateBranchOwnership(
+					this.branch.id,
+					(newOwnership + '\n' + this.branch.ownership).trim()
+				);
+			}
+
+			toasts.success(`Successfully moved ${actionName}`);
+		} catch (e: any) {
+			showError('There was a problem when moving ${actionName}', e.message);
+		} finally {
+			dismissToast(startedId);
 		}
 	}
 }
